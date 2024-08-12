@@ -2,25 +2,35 @@ const
     config = require("./config/config"),
     express = require('express'),
     cors = require('cors'),
+    {ShyftSdk, Network} = require("@shyft-to/js"),
     {createServer} = require('http'),
     TelegramBot = require('node-telegram-bot-api'),
     axios = require("axios");
     // bot = new TelegramBot(TOKEN, {polling: true});
+
 const solPriceAPI = "https://price.jup.ag/v4/price?ids=SOL";
-let solPrice;
+const walletAddress = "86xCnPeV69n6t3DnyGvkKobf9FdN2H9oiVDdaMpo2MMY";
+const shyft = new ShyftSdk({
+    apiKey: 'A8R0rXh47xQVD7VF',
+    network: Network.Mainnet
+});
+
+let solPrice, solBalance, solBalanceInUsd;
 
 const app = express();
 app.use(cors());
 
 function getResult() {
     console.log("Sol Price: ", solPrice);
+    console.log("Sol Balance of Wallet: ", solBalance);
+    console.log("Sol Balance of Wallet in USD: ", solBalanceInUsd);
 }
 
 async function fetchData() {
     try {
         const res = await axios.get(solPriceAPI);
         if (!res.data || !res.data.data.SOL || !res.data.data.SOL.price) {
-            console.error(`No Sol Price while Fetching: ${e.message}`);
+            console.error(`No Sol Price while Fetching`);
         } else {
             solPrice = res.data.data.SOL.price;
         }
@@ -28,7 +38,19 @@ async function fetchData() {
         console.error(`Error Fetching Sol Price: ${e.message}`);
     }
 
-
+    try {
+        solBalance = await shyft.wallet.getBalance({
+            wallet: walletAddress
+        });
+        
+        if (solBalance == NaN) {
+            console.error('Error Sol Balance of Wallet');
+        } else  {
+            solBalanceInUsd = solBalance * solPrice;
+        }
+    } catch (e) {
+        console.error('Error Fetching Sol Balance of Wallet: ', e.message);
+    }
 
 }
 
