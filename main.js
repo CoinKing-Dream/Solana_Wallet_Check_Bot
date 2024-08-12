@@ -2,8 +2,9 @@ const
     config = require("./config/config"),
     express = require('express'),
     cors = require('cors'),
-    {ShyftSdk, Network} = require("@shyft-to/js"),
-    {createServer} = require('http'),
+    { createServer } = require('http'),
+    { ShyftSdk, Network } = require("@shyft-to/js"),
+
     TelegramBot = require('node-telegram-bot-api'),
     axios = require("axios");
     // bot = new TelegramBot(TOKEN, {polling: true});
@@ -51,6 +52,12 @@ async function fetchData() {
     } catch (e) {
         console.error('Error Fetching Sol Balance of Wallet: ', e.message);
     }
+
+    const temp = await axios.get(`https://gmgn.ai/defi/quotation/v1/smartmoney/sol/walletNew/${walletAddress}`, {
+        "period": "7d"
+    });
+    console.log(temp);
+    
 
 }
 
