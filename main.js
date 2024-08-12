@@ -10,13 +10,13 @@ const
     // bot = new TelegramBot(TOKEN, {polling: true});
 
 const solPriceAPI = "https://price.jup.ag/v4/price?ids=SOL";
-const walletAddress = "86xCnPeV69n6t3DnyGvkKobf9FdN2H9oiVDdaMpo2MMY";
+const walletAddress = "5D6UYcnKqSHhYZUcezDaykATzu573bRM2QRurEUqQJp6";
 const shyft = new ShyftSdk({
     apiKey: 'A8R0rXh47xQVD7VF',
     network: Network.Mainnet
 });
 
-let solPrice, solBalance, solBalanceInUsd;
+let solPrice, solBalance, solBalanceInUsd, PL0, PL7, PL30, WR0, WR7, WR30, RoI0, RoI7, RoI30;
 
 const app = express();
 app.use(cors());
@@ -53,12 +53,49 @@ async function fetchData() {
         console.error('Error Fetching Sol Balance of Wallet: ', e.message);
     }
 
-    const temp = await axios.get(`https://gmgn.ai/defi/quotation/v1/smartmoney/sol/walletNew/${walletAddress}`, {
-        "period": "7d"
-    });
-    console.log(temp);
-    
+    try {
+        const res = await axios.get(`https://gmgn.ai/defi/quotation/v1/smartmoney/sol/walletNew/${walletAddress}`);
+        console.log(res.data);
+        if (!res.data) {
+            console.error("No Metric Data");
+        } else {
+            if (res.data.pnl) PL0 = res.data.pnl;
+            else PL0 = 0;
 
+            if (res.data.pnl_7d) PL7 = res.data.pnl_7d;
+            else PL7 = 0;
+
+            if (res.data.pnl_30d) PL30 = res.data.pnl_30d;
+            else PL30 = 0;
+
+            const totalTrade0 = ((res.data.buy) ? res.data.buy : 0) + ((res.data.sell) ? res.data.sell : 0);
+            const WinningTrade0 = ((res.data.buy) ? res.data.buy : 0) - ((res.data.sell) ? res.data.sell : 0);
+            if (!totalTrade0) {
+                WR0 = 0;
+            } else {
+                WR0 = WinningTrade0 / totalTrade0 * 100;
+            }
+
+            const totalTrade7 = ((res.data.buy_7d) ? res.data.buy_7d : 0) + ((res.data.sell_7d) ? res.data.sell_7d : 0);
+            const WinningTrade7 = ((res.data.buy_7d) ? res.data.buy_7d : 0) - ((res.data.sell_7d) ? res.data.sell_7d : 0);
+            if (!totalTrade7) {
+                WR7 = 0;
+            } else {
+                WR7 = WinningTrade7 / totalTrade7 * 100;
+            }
+
+            const totalTrade30 = ((res.data.buy_30) ? res.data.buy_30 : 0) + ((res.data.sell_30) ? res.data.sell_30 : 0);
+            const WinningTrade30 = ((res.data.buy_30) ? res.data.buy_30 : 0) - ((res.data.sell_30) ? res.data.sell_30 : 0);
+            if (!totalTrade30) {
+                WR30 = 0;
+            } else {
+                WR30 = WinningTrade30 / totalTrade30 * 100;
+            }
+        }
+        
+    } catch (e) {
+        console.error("Error Fetching Metric Data", e.message);
+    }
 }
 
 const server = createServer(app);
