@@ -10,7 +10,8 @@ const
     // bot = new TelegramBot(TOKEN, {polling: true});
 
 const solPriceAPI = "https://price.jup.ag/v4/price?ids=SOL";
-const walletAddress = "5D6UYcnKqSHhYZUcezDaykATzu573bRM2QRurEUqQJp6";
+// const walletAddress = "5D6UYcnKqSHhYZUcezDaykATzu573bRM2QRurEUqQJp6";
+const walletAddress = "5Sw3PQZyzPBYvqfor1orKFPdctpVPSBkm6Q6ECHjByno";
 const shyft = new ShyftSdk({
     apiKey: 'A8R0rXh47xQVD7VF',
     network: Network.Mainnet
