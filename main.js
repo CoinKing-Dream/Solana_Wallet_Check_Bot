@@ -18,8 +18,14 @@ const shyft = new ShyftSdk({
     network: Network.Mainnet
 });
 
-let solPrice, solBalance, solBalanceInUsd, PL0, PL7, PL30, WR0, WR7, WR30, RoI0, RoI7, RoI30;
+let solPrice, solBalance, solBalanceInUsd, WR, PL0, PL7, PL30, WR0, WR7, WR30, RoI0, RoI7, RoI30;
+let pnl_lt_minus_dot5_num, pnl_minus_dot_0x_num, pnl_lt_2x_num, pnl_2x_5x_num, pnl_gt_5x_num;
 let walletInfo = "";
+
+const moneyBagEmoji = '\uD83C\uDF81'; // 💰
+const gemEmoji = '\uD83D\uDC8E'; // 💎
+const eyesEmoji = '\uD83D\uDC40'; // 👀
+const rocketEmoji = '\uD83D\uDE80'; // 🚀
 
 const app = express();
 app.use(cors());
@@ -41,22 +47,57 @@ function getResult() {
     console.log("RoI7d:", RoI7);
     console.log("RoI30d:", RoI30);
 
-    walletInfo = "<code style='color: blue'>" + walletAddress + "</code>";
+    walletInfo = "<code><b>" + walletAddress + "</b></code>";
+    walletInfo += "\n\n";
+
+    walletInfo += "- Wallet Details\n";
+    walletInfo += "Sol Price: $" + solPrice + "\n";
+    walletInfo += "Sol Balance: " + solBalance + ` ($${solBalanceInUsd}) \n`;
+    walletInfo += "Win Rate: " + (WR * 100) + "%\n\n";
+
+    walletInfo += "- Metric 1D\n";
+    walletInfo += moneyBagEmoji + " P&L: " + "(+" + PL0 + "%)\n";
+    walletInfo += gemEmoji + " RoI: " + "(+" + RoI0 + "%)\n\n";
     
+    walletInfo += "- Metric 7D\n";
+    walletInfo += moneyBagEmoji + " P&L: " + "(+" + PL7 + "%)\n";
+    walletInfo += gemEmoji + " RoI: " + "(+" + RoI7 + "%)\n\n";
+    
+    walletInfo += "- Metric 30D\n";
+    walletInfo += moneyBagEmoji + " P&L: " + "(+" + PL30 + "%)\n";
+    walletInfo += gemEmoji + " RoI: " + "(+" + RoI30 + "%)\n\n";
+
+    walletInfo += eyesEmoji + " Wallet Activity/Volume\n";
+    
+
+    walletInfo += "💊" + " Tokens Result\n";
+    walletInfo += moneyBagEmoji + pnl_lt_minus_dot5_num + " ";
+    walletInfo += eyesEmoji + pnl_minus_dot5_0x_num + " ";
+    walletInfo += gemEmoji + pnl_lt_2x_num + " ";
+    walletInfo += "🎉"  + pnl_2x_5x_num + " ";
+    walletInfo +=  rocketEmoji + pnl_gt_5x_num + "\n";
+
+    walletInfo += moneyBagEmoji + "[X_50] ";
+    walletInfo += eyesEmoji + "[X_50~X0] ";
+    walletInfo += gemEmoji + "[X0~X200] "; 
+    walletInfo += "🎉" + "[X200~X500] "; 
+    walletInfo += rocketEmoji + "[X500~] "; 
 }
 
 function calculatePL(res) {
-    if (res.pnl) PL0 = res.pnl;
-    else PL0 = 0;
+    if (res.pnl) PL0 = res.pnl * 100;
+    else PL0 = '';
 
-    if (res.pnl_7d) PL7 = res.pnl_7d;
-    else PL7 = 0;
+    if (res.pnl_7d) PL7 = res.pnl_7d * 100;
+    else PL7 = '';
 
-    if (res.pnl_30d) PL30 = res.pnl_30d;
-    else PL30 = 0;
+    if (res.pnl_30d) PL30 = res.pnl_30d * 100;
+    else PL30 = '';
 }
 
 function calculateWR(res) {
+    WR = (res.winrate) ? res.winrate : "";
+
     const totalTrade0 = ((res.buy) ? res.buy : 0) + ((res.sell) ? res.sell : 0);
     const WinningTrade0 = ((res.buy) ? res.buy : 0) - ((res.sell) ? res.sell : 0);
     if (!totalTrade0) {
@@ -108,6 +149,10 @@ function calculateRoI(res) {
     }
 }
 
+function calculateDistributions(res) {
+    ({pnl_lt_minus_dot5_num, pnl_minus_dot5_0x_num, pnl_lt_2x_num, pnl_2x_5x_num, pnl_gt_5x_num} = res);
+}
+
 async function fetchData() {
     try {
         const res = await axios.get(solPriceAPI);
@@ -145,6 +190,7 @@ async function fetchData() {
             calculatePL(res);
             calculateWR(res);
             calculateRoI(res);
+            calculateDistributions(res);
         }
         
     } catch (e) {
