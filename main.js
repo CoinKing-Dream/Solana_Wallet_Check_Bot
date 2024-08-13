@@ -1,5 +1,5 @@
 const 
-    config = require("./config/config"),
+    { TOKEN, PORT } = require("./config/config"),
     express = require('express'),
     cors = require('cors'),
     { createServer } = require('http'),
@@ -7,17 +7,19 @@ const
 
     TelegramBot = require('node-telegram-bot-api'),
     axios = require("axios");
-    // bot = new TelegramBot(TOKEN, {polling: true});
+    bot = new TelegramBot(TOKEN, {polling: true});
 
 const solPriceAPI = "https://price.jup.ag/v4/price?ids=SOL";
-// const walletAddress = "5D6UYcnKqSHhYZUcezDaykATzu573bRM2QRurEUqQJp6";
-const walletAddress = "5Sw3PQZyzPBYvqfor1orKFPdctpVPSBkm6Q6ECHjByno";
+const walletAddress = "4hBL4Z2Tvn2bCNqZniAxL82xviPJaTQeyKMdnLwsVt7L";
+// const walletAddress = "5Sw3PQZyzPBYvqfor1orKFPdctpVPSBkm6Q6ECHjByno";
+// const walletAddress = "EsYijj9xcWTiNmxeENQfhUf2p4TiKcgXS7yZgzFY2VmP";
 const shyft = new ShyftSdk({
     apiKey: 'A8R0rXh47xQVD7VF',
     network: Network.Mainnet
 });
 
 let solPrice, solBalance, solBalanceInUsd, PL0, PL7, PL30, WR0, WR7, WR30, RoI0, RoI7, RoI30;
+let walletInfo = "";
 
 const app = express();
 app.use(cors());
@@ -38,6 +40,8 @@ function getResult() {
     console.log("RoI0d:", RoI0);
     console.log("RoI7d:", RoI7);
     console.log("RoI30d:", RoI30);
+
+    walletInfo = "<code style='color: blue'>" + walletAddress + "</code>";
     
 }
 
@@ -150,7 +154,7 @@ async function fetchData() {
 
 const server = createServer(app);
 
-server.listen(config.PORT, async () => {
+server.listen(PORT, async () => {
     console.log('server is listening');
 
     await fetchData();
@@ -158,30 +162,30 @@ server.listen(config.PORT, async () => {
 });
 
 
-// bot.on('message', async msg => {
-//     try {
-//       const chatId = msg.chat.id;
-//       const userId = msg.from.id;
+bot.on('message', async msg => {
+    try {
+      const chatId = msg.chat.id;
+      const userId = msg.from.id;
       
-//       const { text } = msg;
-//       const COMMANDS = text.toUpperCase();
+      const { text } = msg;
+      const COMMANDS = text.toUpperCase();
       
-//       if (!text) return;
+      if (!text) return;
   
-//       switch (COMMANDS) {
-//         case '/START':
-//           bot.sendMessage(
-//             chatId,
-//             `Let's get started!\n\nWhat is your RuneForce username?`,
-//             {
-//               parse_mode: 'HTML',
-//             }
-//           );
-//           break;
-//         default:
-//           handleUsername(bot, chatId, userId, text);
-//       }
-//     } catch (err) {
-//       console.error(err);
-//     }
-//   })
+      switch (COMMANDS) {
+        case '/START':
+          bot.sendMessage(
+            chatId,
+            walletInfo,
+            {
+              parse_mode: 'HTML',
+            }
+          );
+          break;
+        default:
+          handleUsername(bot, chatId, userId, text);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  })
