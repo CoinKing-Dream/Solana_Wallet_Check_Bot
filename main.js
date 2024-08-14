@@ -10,16 +10,18 @@ const
     bot = new TelegramBot(TOKEN, {polling: true});
 
 const solPriceAPI = "https://price.jup.ag/v4/price?ids=SOL";
-const walletAddress = "4hBL4Z2Tvn2bCNqZniAxL82xviPJaTQeyKMdnLwsVt7L";
+// const walletAddress = "4hBL4Z2Tvn2bCNqZniAxL82xviPJaTQeyKMdnLwsVt7L";
 // const walletAddress = "5Sw3PQZyzPBYvqfor1orKFPdctpVPSBkm6Q6ECHjByno";
 // const walletAddress = "EsYijj9xcWTiNmxeENQfhUf2p4TiKcgXS7yZgzFY2VmP";
+let walletAddress;
+
 const shyft = new ShyftSdk({
     apiKey: 'A8R0rXh47xQVD7VF',
     network: Network.Mainnet
 });
 
 let solPrice, solBalance, solBalanceInUsd, WR, PL0, PL7, PL30, WR0, WR7, WR30, RoI0, RoI7, RoI30;
-let pnl_lt_minus_dot5_num, pnl_minus_dot_0x_num, pnl_lt_2x_num, pnl_2x_5x_num, pnl_gt_5x_num;
+let pnl_lt_minus_dot5_num, pnl_minus_dot5_0x_num, pnl_lt_2x_num, pnl_2x_5x_num, pnl_gt_5x_num;
 let walletInfo = "";
 
 const moneyBagEmoji = '\uD83C\uDF81'; // 💰
@@ -67,7 +69,7 @@ function getResult() {
     walletInfo += moneyBagEmoji + " P&L: " + "(+" + PL30 + "%)\n";
     walletInfo += gemEmoji + " RoI: " + "(+" + RoI30 + "%)\n\n";
 
-    walletInfo += eyesEmoji + " Wallet Activity/Volume\n";
+    walletInfo += "- Wallet Activity/Volume\n";
     
 
     walletInfo += "💊" + " Tokens Result\n";
@@ -202,24 +204,45 @@ const server = createServer(app);
 
 server.listen(PORT, async () => {
     console.log('server is listening');
-
-    await fetchData();
-    await getResult();
 });
 
+async function getWalletInfo() {
+    await fetchData();
+    await getResult();
+}
 
 bot.on('message', async msg => {
     try {
       const chatId = msg.chat.id;
-      const userId = msg.from.id;
       
       const { text } = msg;
-      const COMMANDS = text.toUpperCase();
+      const splittedText = text.split(" ");
+      const COMMANDS = splittedText[0].toUpperCase();
       
-      if (!text) return;
-  
       switch (COMMANDS) {
         case '/START':
+          walletAddress = splittedText[1];
+          if (!walletAddress) {
+            bot.sendMessage(
+                chatId,
+                "Please insert your wallet address.",
+                {
+                  parse_mode: 'HTML',
+                }
+              );
+            return ;
+          } 
+
+          bot.sendMessage(
+            chatId,
+            "Please wait for a sec",
+            {
+              parse_mode: 'HTML',
+            }
+          );
+
+          await getWalletInfo();
+
           bot.sendMessage(
             chatId,
             walletInfo,
@@ -229,7 +252,7 @@ bot.on('message', async msg => {
           );
           break;
         default:
-          handleUsername(bot, chatId, userId, text);
+          
       }
     } catch (err) {
       console.error(err);
