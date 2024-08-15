@@ -3,7 +3,7 @@ const
     express = require('express'),
     cors = require('cors'),
     { createServer } = require('http'),
-    { ShyftSdk, Network } = require("@shyft-to/js"),
+    // { ShyftSdk, Network } = require("@shyft-to/js"),
 
     TelegramBot = require('node-telegram-bot-api'),
     axios = require("axios");
@@ -15,13 +15,16 @@ const solPriceAPI = "https://price.jup.ag/v4/price?ids=SOL";
 // const walletAddress = "EsYijj9xcWTiNmxeENQfhUf2p4TiKcgXS7yZgzFY2VmP";
 let walletAddress;
 
-const shyft = new ShyftSdk({
-    apiKey: 'A8R0rXh47xQVD7VF',
-    network: Network.Mainnet
-});
+let flagStart = false;
+
+// const shyft = new ShyftSdk({
+//     apiKey: 'A8R0rXh47xQVD7VF',
+//     network: Network.Mainnet
+// });
 
 let solPrice, solBalance, solBalanceInUsd, WR, PL0, PL7, PL30, WR0, WR7, WR30, RoI0, RoI7, RoI30;
 let pnl_lt_minus_dot5_num, pnl_minus_dot5_0x_num, pnl_lt_2x_num, pnl_2x_5x_num, pnl_gt_5x_num;
+let last_active_timestamp;
 let walletInfo = "";
 
 const moneyBagEmoji = '\uD83C\uDF81'; // 💰
@@ -57,33 +60,45 @@ function getResult() {
     walletInfo += "Sol Balance: " + solBalance + ` ($${solBalanceInUsd}) \n`;
     walletInfo += "Win Rate: " + (WR * 100) + "%\n\n";
 
-    walletInfo += "- Metric 1D\n";
+    walletInfo += "✅ Metric 1D\n";
     walletInfo += moneyBagEmoji + " P&L: " + "(+" + PL0 + "%)\n";
     walletInfo += gemEmoji + " RoI: " + "(+" + RoI0 + "%)\n\n";
     
-    walletInfo += "- Metric 7D\n";
+    walletInfo += "✅ Metric 7D\n";
     walletInfo += moneyBagEmoji + " P&L: " + "(+" + PL7 + "%)\n";
     walletInfo += gemEmoji + " RoI: " + "(+" + RoI7 + "%)\n\n";
     
-    walletInfo += "- Metric 30D\n";
+    walletInfo += "✅ Metric 30D\n";
     walletInfo += moneyBagEmoji + " P&L: " + "(+" + PL30 + "%)\n";
     walletInfo += gemEmoji + " RoI: " + "(+" + RoI30 + "%)\n\n";
 
-    walletInfo += "- Wallet Activity/Volume\n";
-    
+    walletInfo += "✅ Wallet Activity/Volume\n";
+    const dateTime = convertDateTime(last_active_timestamp);
+    walletInfo += "Last Trade: " + dateTime + "\n\n";
 
-    walletInfo += "💊" + " Tokens Result\n";
-    walletInfo += moneyBagEmoji + pnl_lt_minus_dot5_num + " ";
-    walletInfo += eyesEmoji + pnl_minus_dot5_0x_num + " ";
-    walletInfo += gemEmoji + pnl_lt_2x_num + " ";
-    walletInfo += "🎉"  + pnl_2x_5x_num + " ";
-    walletInfo +=  rocketEmoji + pnl_gt_5x_num + "\n";
+    walletInfo += "✅ Tokens Result\n";
+    walletInfo += " 🟢 "  + pnl_lt_minus_dot5_num;
+    walletInfo += "    🔴 " + pnl_minus_dot5_0x_num;
+    walletInfo += "    🎉 " + pnl_lt_2x_num;
+    walletInfo += "    🔥 "  + pnl_2x_5x_num;
+    walletInfo += "    🚀 " + pnl_gt_5x_num + "\n";
+    walletInfo += "------------------------------------------------------\n";
 
-    walletInfo += moneyBagEmoji + "[X_50] ";
-    walletInfo += eyesEmoji + "[X_50~X0] ";
-    walletInfo += gemEmoji + "[X0~X200] "; 
-    walletInfo += "🎉" + "[X200~X500] "; 
-    walletInfo += rocketEmoji + "[X500~] "; 
+    walletInfo += "  🟢 <code>[ ~ -50%]</code>\n";
+    walletInfo += "  🔴 <code>[-50% ~ 0%]</code>\n";
+    walletInfo += "  🎉 <code>[0% ~ 200%]</code>\n"; 
+    walletInfo += "  🔥 <code>[200% ~ 500%]</code>\n"; 
+    walletInfo += "  🚀 <code>[500% ~ ]</code>\n\n"; 
+
+    walletInfo += "✅ Solscan\n";
+    walletInfo += `  <a href="https://solscan.io/account/${walletAddress}">Solscan</a>\n\n`;
+}
+
+function calculatePriceAndBalance(res) {
+    if (res.sol_balance) solBalance = res.sol_balance;
+    else solBalance = "";
+
+    solBalanceInUsd = solPrice * solBalance;
 }
 
 function calculatePL(res) {
@@ -152,7 +167,17 @@ function calculateRoI(res) {
 }
 
 function calculateDistributions(res) {
-    ({pnl_lt_minus_dot5_num, pnl_minus_dot5_0x_num, pnl_lt_2x_num, pnl_2x_5x_num, pnl_gt_5x_num} = res);
+    ({pnl_lt_minus_dot5_num, pnl_minus_dot5_0x_num, pnl_lt_2x_num, pnl_2x_5x_num, pnl_gt_5x_num, last_active_timestamp} = res);
+}
+
+function convertDateTime(ms) {
+    const dateTime = new Date(ms);
+
+    let day = String(dateTime.getUTCDate()).padStart(2, '0');
+    let hours = String(dateTime.getUTCHours()).padStart(2, '0');
+    let minutes = String(dateTime.getUTCMinutes()).padStart(2, '0');
+
+    return day + "D " + hours + "H " + minutes + "M";
 }
 
 async function fetchData() {
@@ -168,33 +193,19 @@ async function fetchData() {
     }
 
     try {
-        solBalance = await shyft.wallet.getBalance({
-            wallet: walletAddress
-        });
-        
-        if (solBalance == NaN) {
-            console.error('Error Sol Balance of Wallet');
-        } else  {
-            solBalanceInUsd = solBalance * solPrice;
-        }
-    } catch (e) {
-        console.error('Error Fetching Sol Balance of Wallet: ', e.message);
-    }
-
-    try {
         let res = await axios.get(`https://gmgn.ai/defi/quotation/v1/smartmoney/sol/walletNew/${walletAddress}`);
         res = res.data.data;
         console.log(res);
 
         if (!res) {
-            console.error("No Metric Data");
+            console.error("No API Data");
         } else {
+            calculatePriceAndBalance(res);
             calculatePL(res);
             calculateWR(res);
             calculateRoI(res);
             calculateDistributions(res);
         }
-        
     } catch (e) {
         console.error("Error Fetching Metric Data", e.message);
     }
@@ -203,7 +214,7 @@ async function fetchData() {
 const server = createServer(app);
 
 server.listen(PORT, async () => {
-    console.log('server is listening');
+    console.log('Server is listening');
 });
 
 async function getWalletInfo() {
@@ -216,44 +227,41 @@ bot.on('message', async msg => {
       const chatId = msg.chat.id;
       
       const { text } = msg;
-      const splittedText = text.split(" ");
-      const COMMANDS = splittedText[0].toUpperCase();
-      
-      switch (COMMANDS) {
-        case '/START':
-          walletAddress = splittedText[1];
-          if (!walletAddress) {
+      const COMMANDS = text.toUpperCase();
+        
+      if (COMMANDS == "/START") {
             bot.sendMessage(
                 chatId,
                 "Please insert your wallet address.",
                 {
                   parse_mode: 'HTML',
                 }
-              );
-            return ;
-          } 
+            );
+            flagStart = true;
+        } else {
+            if ( flagStart ) {
+                flagStart = false;
+                walletAddress = text.trim();
 
-          bot.sendMessage(
-            chatId,
-            "Please wait for a sec",
-            {
-              parse_mode: 'HTML',
+                bot.sendMessage(
+                    chatId,
+                    "Please wait for a sec",
+                    {
+                        parse_mode: 'HTML',
+                    }
+                );
+                
+                await getWalletInfo();
+                
+                bot.sendMessage(
+                    chatId,
+                    walletInfo,
+                    {
+                        parse_mode: 'HTML',
+                    }
+                );
             }
-          );
-
-          await getWalletInfo();
-
-          bot.sendMessage(
-            chatId,
-            walletInfo,
-            {
-              parse_mode: 'HTML',
-            }
-          );
-          break;
-        default:
-          
-      }
+        }
     } catch (err) {
       console.error(err);
     }
